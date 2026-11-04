@@ -50,20 +50,13 @@ public class StationActions {
         ItemListDialog.create(activity, new int[]{
                 R.string.action_station_visit_website, R.string.action_station_copy_stream_url, R.string.action_station_share
         }, resourceId -> {
-            switch (resourceId) {
-                case R.string.action_station_visit_website: {
+            if (resourceId == R.string.action_station_visit_website) {
                     openStationHomeUrl(activity, station);
-                    break;
-                }
-                case R.string.action_station_copy_stream_url: {
+            } else if (resourceId == R.string.action_station_copy_stream_url) {
                     retrieveAndCopyStreamUrlToClipboard(activity, station);
-                    break;
-                }
-                case R.string.action_station_share: {
+            } else if (resourceId == R.string.action_station_share) {
                     share(activity, station);
-                    break;
                 }
-            }
         }).show();
     }
 

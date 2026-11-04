@@ -322,23 +322,16 @@ public class ActivityMain extends AppCompatActivity implements SearchView.OnQuer
         Fragment f = null;
         String backStackTag = String.valueOf(selectedMenuItem);
 
-        switch (selectedMenuItem) {
-            case R.id.nav_item_stations:
-                f = new FragmentTabs();
-                break;
-            case R.id.nav_item_starred:
-                f = new FragmentStarred();
-                break;
-            case R.id.nav_item_history:
-                f = new FragmentHistory();
-                break;
-            case R.id.nav_item_alarm:
-                f = new FragmentAlarm();
-                break;
-            case R.id.nav_item_settings:
-                f = new FragmentSettings();
-                break;
-            default:
+        if (selectedMenuItem == R.id.nav_item_stations) {
+            f = new FragmentTabs();
+        } else if (selectedMenuItem == R.id.nav_item_starred) {
+            f = new FragmentStarred();
+        } else if (selectedMenuItem == R.id.nav_item_history) {
+            f = new FragmentHistory();
+        } else if (selectedMenuItem == R.id.nav_item_alarm) {
+            f = new FragmentAlarm();
+        } else if (selectedMenuItem == R.id.nav_item_settings) {
+            f = new FragmentSettings();
         }
 
         // Without "Immediate", "Settings" fragment may become forever stuck in limbo receiving onResume.
@@ -611,15 +604,12 @@ public class ActivityMain extends AppCompatActivity implements SearchView.OnQuer
         }
         menuItemMpd.setVisible(mpd_is_visible);
 
-        switch (selectedMenuItem) {
-            case R.id.nav_item_stations: {
+        if (selectedMenuItem == R.id.nav_item_stations) {
                 menuItemSleepTimer.setVisible(true);
                 menuItemSearch.setVisible(true);
                 myToolbar.setTitle(R.string.nav_item_stations);
                 myToolbar.setNavigationIcon(R.drawable.logo_radio_krr_menu);
-                break;
-            }
-            case R.id.nav_item_starred: {
+        } else if (selectedMenuItem == R.id.nav_item_starred) {
                 menuItemSleepTimer.setVisible(true);
                 //menuItemSearch.setVisible(true);
                 menuItemSave.setVisible(true);
@@ -637,9 +627,7 @@ public class ActivityMain extends AppCompatActivity implements SearchView.OnQuer
                     menuItemDelete.setVisible(true).setTitle(R.string.action_delete_favorites);
                 }
                 myToolbar.setTitle(R.string.nav_item_starred);
-                break;
-            }
-            case R.id.nav_item_history: {
+        } else if (selectedMenuItem == R.id.nav_item_history) {
                 menuItemSleepTimer.setVisible(true);
                 //menuItemSearch.setVisible(true);
                 menuItemSave.setVisible(true);
@@ -650,15 +638,10 @@ public class ActivityMain extends AppCompatActivity implements SearchView.OnQuer
                 }
                 myToolbar.setTitle(R.string.nav_item_history);
                 myToolbar.setNavigationIcon(R.drawable.logo_radio_krr_menu);
-
-                break;
-            }
-            case R.id.nav_item_alarm: {
+        } else if (selectedMenuItem == R.id.nav_item_alarm) {
                 menuItemAddAlarm.setVisible(true);
                 myToolbar.setTitle(R.string.nav_item_alarm);
                 myToolbar.setNavigationIcon(R.drawable.logo_radio_krr_menu);
-                break;
-            }
  /* settings fragment sets the toolbar title depending on the current preference screen
             case R.id.nav_item_settings: {
                 myToolbar.setTitle(R.string.nav_item_settings);
@@ -726,11 +709,11 @@ public class ActivityMain extends AppCompatActivity implements SearchView.OnQuer
 
     @Override
     public boolean onOptionsItemSelected(MenuItem menuItem) {
-        switch (menuItem.getItemId()) {
-            case android.R.id.home:
+        final int itemId = menuItem.getItemId();
+        if (itemId == android.R.id.home) {
                 mDrawerLayout.openDrawer(GravityCompat.START);  // OPEN DRAWER
                 return true;
-            case R.id.action_save:
+        } else if (itemId == R.id.action_save) {
                 try {
                     if (Utils.verifyStoragePermissions(this, PERM_REQ_STORAGE_FAV_SAVE)) {
                         SaveFavourites();
@@ -740,7 +723,7 @@ public class ActivityMain extends AppCompatActivity implements SearchView.OnQuer
                 }
 
                 return true;
-            case R.id.action_load:
+        } else if (itemId == R.id.action_load) {
                 try {
                     if (Utils.verifyStoragePermissions(this, PERM_REQ_STORAGE_FAV_LOAD)) {
                         LoadFavourites();
@@ -749,13 +732,13 @@ public class ActivityMain extends AppCompatActivity implements SearchView.OnQuer
                     Log.e("MAIN", e.toString());
                 }
                 return true;
-            case R.id.action_set_sleep_timer:
+        } else if (itemId == R.id.action_set_sleep_timer) {
                 changeTimer();
                 return true;
-            case R.id.action_mpd:
+        } else if (itemId == R.id.action_mpd) {
                 selectMPDServer();
                 return true;
-            case R.id.action_delete:
+        } else if (itemId == R.id.action_delete) {
                 if (selectedMenuItem == R.id.nav_item_history) {
                     new AlertDialog.Builder(this)
                             .setMessage(this.getString(R.string.alert_delete_history))
@@ -795,15 +778,15 @@ public class ActivityMain extends AppCompatActivity implements SearchView.OnQuer
                             .show();
                 }
                 return true;
-            case R.id.action_list_view:
+        } else if (itemId == R.id.action_list_view) {
                 sharedPref.edit().putBoolean("icons_only_favorites_style", false).apply();
                 recreate();
                 return true;
-            case R.id.action_icons_view:
+        } else if (itemId == R.id.action_icons_view) {
                 sharedPref.edit().putBoolean("icons_only_favorites_style", true).apply();
                 recreate();
                 return true;
-            case R.id.action_add_alarm:
+        } else if (itemId == R.id.action_add_alarm) {
                 TimePickerFragment newFragment = new TimePickerFragment();
                 newFragment.setCallback(this);
                 newFragment.show(getSupportFragmentManager(), "timePicker");
