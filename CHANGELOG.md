@@ -5,6 +5,37 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+KRR releases below are numbered by their Google Play `versionCode`; older entries
+are the RadioDroid versions KRR is based on.
+
+## [50] - 2026-11-05
+### Changed
+- Release builds are optimized and shrunk with R8 (app size down by ~60%)
+
+## [49] - 2026-11-05
+### Added
+- Android 16 (API 36) support, as required by Google Play
+- Notification permission request (Android 13+)
+- Prompt to allow "Alarms & reminders" so the radio alarm starts on time (Android 12+);
+  without it the alarm falls back to an inexact one instead of failing
+- "Nearby devices" permission request when enabling resume on Bluetooth connection (Android 12+)
+
+### Changed
+- Playback engine updated from ExoPlayer 2.13 to AndroidX Media3 1.11
+- Edge-to-edge layout on all Android versions
+- Recordings use the file extension of the stream codec (`.aac`, `.ogg`, `.flac`, `.mp3`)
+- Minimum supported version raised to Android 6.0 (previously Android 4.1)
+- Build updated to Gradle 9.8 and Android Gradle Plugin 9.5
+
+### Fixed
+- Crash when starting playback on Android 14+ (missing foreground service type)
+- Radio alarm could not be set on Android 12+ without the exact alarm permission
+- Saving and loading favourites and recording did nothing on Android 13+
+- Play time, data usage and recording size in the full player stopped updating
+- Bottom navigation hidden behind the system navigation bar
+- Crash when opening the generic item list dialog (outdated bottom sheet class)
+- End of stream corrupting ICY metadata handling and recordings
+
 ## [0.84] - 2020-12-28
 ### Added
 - Refreshable favorites and history lists
