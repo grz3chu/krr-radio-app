@@ -25,6 +25,7 @@ import com.devnull.radio.R;
 
 import com.devnull.radio.RadioDroidApp;
 import com.devnull.radio.Utils;
+import com.devnull.radio.alarm.RadioAlarmManager;
 import com.devnull.radio.alarm.TimePickerFragment;
 import com.devnull.radio.views.ItemListDialog;
 
@@ -42,6 +43,7 @@ public class StationActions {
         newFragment.setCallback((timePicker, hourOfDay, minute) -> {
             Log.i(TAG, String.format("Alarm time picked %d:%d", hourOfDay, minute));
             radioDroidApp.getAlarmManager().add(station, hourOfDay, minute);
+            RadioAlarmManager.askForExactAlarmPermissionIfNeeded(activity);
         });
         newFragment.show(activity.getSupportFragmentManager(), "timePicker");
     }

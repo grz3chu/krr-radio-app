@@ -257,4 +257,6 @@
     <string name="nav_item_statistics">Statystyki</string>
     <string name="nav_item_about">O</string>
     <string name="refresh">Odśwież</string>
+    <string name="alert_exact_alarm_permission">Aby alarm radiowy włączył się punktualnie, KRR potrzebuje uprawnienia \"Alarmy i przypomnienia\". Bez niego alarm może się opóźnić.</string>
+    <string name="action_open_settings">Otwórz ustawienia</string>
 </resources>

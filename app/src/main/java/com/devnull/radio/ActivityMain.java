@@ -1,5 +1,6 @@
 package com.devnull.radio;
 
+import android.Manifest;
 import android.app.TimePickerDialog;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -10,9 +11,11 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.res.Resources;
 import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.util.Log;
+import android.util.TypedValue;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -29,8 +32,14 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.SearchView;
 import androidx.appcompat.widget.Toolbar;
 import androidx.coordinatorlayout.widget.CoordinatorLayout;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+import androidx.core.graphics.Insets;
 import androidx.core.view.GravityCompat;
 import androidx.core.view.MenuItemCompat;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.fragment.app.DialogFragment;
 import androidx.fragment.app.Fragment;
@@ -48,6 +57,7 @@ import com.google.android.material.navigation.NavigationView;
 import com.google.android.material.tabs.TabLayout;
 import com.mikepenz.iconics.Iconics;
 import com.devnull.radio.alarm.FragmentAlarm;
+import com.devnull.radio.alarm.RadioAlarmManager;
 import com.devnull.radio.alarm.TimePickerFragment;
 import com.devnull.radio.cast.CastAwareActivity;
 import com.devnull.radio.interfaces.IFragmentSearchable;
@@ -98,6 +108,8 @@ public class ActivityMain extends AppCompatActivity implements SearchView.OnQuer
 
     public static final int PERM_REQ_STORAGE_FAV_SAVE = 1;
     public static final int PERM_REQ_STORAGE_FAV_LOAD = 2;
+    public static final int PERM_REQ_NOTIFICATIONS = 3;
+    private static final String PREF_NOTIFICATION_PERMISSION_ASKED = "notification_permission_asked";
 
     private SearchView mSearchView;
 
@@ -149,6 +161,8 @@ public class ActivityMain extends AppCompatActivity implements SearchView.OnQuer
         setTheme(Utils.getThemeResId(this));
         setContentView(R.layout.layout_main);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        applySystemBarInsets();
+        requestNotificationPermissionIfNeeded();
 
         try {
             File dir = new File(getFilesDir().getAbsolutePath());
@@ -406,6 +420,41 @@ public class ActivityMain extends AppCompatActivity implements SearchView.OnQuer
             return;
         }
         super.onBackPressed();
+    }
+
+    /**
+     * Apps targeting Android 15+ are always drawn edge-to-edge (behind the status and navigation
+     * bars). Do the same on all versions and pad the layout ourselves: top and sides on the root
+     * view (painted with the theme's former status bar colour), bottom is left to the
+     * BottomNavigationView, which pads itself with its own background.
+     */
+    private void applySystemBarInsets() {
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
+
+        final View root = findViewById(R.id.main_content);
+        TypedValue statusBarColor = new TypedValue();
+        if (getTheme().resolveAttribute(android.R.attr.statusBarColor, statusBarColor, true)) {
+            root.setBackgroundColor(statusBarColor.data);
+        }
+
+        ViewCompat.setOnApplyWindowInsetsListener(root, (v, insets) -> {
+            final int types = WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.displayCutout();
+            Insets bars = insets.getInsets(types);
+            v.setPadding(bars.left, bars.top, bars.right, 0);
+            return new WindowInsetsCompat.Builder(insets)
+                    .setInsets(types, Insets.of(0, 0, 0, bars.bottom))
+                    .build();
+        });
+    }
+
+    private void requestNotificationPermissionIfNeeded() {
+        // Android 13+: without this runtime permission the player notification is hidden.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                && ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+                && !sharedPref.getBoolean(PREF_NOTIFICATION_PERMISSION_ASKED, false)) {
+            sharedPref.edit().putBoolean(PREF_NOTIFICATION_PERMISSION_ASKED, true).apply();
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.POST_NOTIFICATIONS}, PERM_REQ_NOTIFICATIONS);
+        }
     }
 
     @Override
@@ -811,6 +860,7 @@ public class ActivityMain extends AppCompatActivity implements SearchView.OnQuer
         if (historyManager.size() > 0 && currentFragment instanceof FragmentAlarm) {
             DataRadioStation station = historyManager.getList().get(0);
             ((FragmentAlarm) currentFragment).getRam().add(station, hourOfDay, minute);
+            RadioAlarmManager.askForExactAlarmPermissionIfNeeded(this);
         }
     }
 

@@ -1,7 +1,10 @@
 package com.devnull.radio;
 
+import android.Manifest;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
+import androidx.core.content.ContextCompat;
 import android.media.audiofx.AudioEffect;
 import android.os.Build;
 import android.os.Bundle;
@@ -30,6 +33,8 @@ import com.devnull.radio.R;
 import static com.devnull.radio.ActivityMain.FRAGMENT_FROM_BACKSTACK;
 
 public class FragmentSettings extends PreferenceFragmentCompat implements SharedPreferences.OnSharedPreferenceChangeListener, IApplicationSelected, PreferenceFragmentCompat.OnPreferenceStartScreenCallback  {
+
+    private static final int PERM_REQ_BLUETOOTH_CONNECT = 4;
 
     @Override
     public Fragment getCallbackFragment() {
@@ -219,6 +224,19 @@ public class FragmentSettings extends PreferenceFragmentCompat implements Shared
                                           String key) {
         if (BuildConfig.DEBUG) {
             Log.d("AAA", "changed key:" + key);
+        }
+        if (key == null) {
+            // Since Android 11 (targetSdk 30+) the listener is also called with a null key
+            // when all preferences are cleared.
+            return;
+        }
+        if (key.equals("auto_resume_on_bluetooth_a2dp_connection")
+                && sharedPreferences.getBoolean(key, false)
+                && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+                && ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+            // Android 12+: Bluetooth headset/A2DP connection broadcasts are only delivered
+            // to apps holding the "Nearby devices" permission.
+            requestPermissions(new String[]{Manifest.permission.BLUETOOTH_CONNECT}, PERM_REQ_BLUETOOTH_CONNECT);
         }
         if (key.equals("alarm_external")) {
             boolean active = sharedPreferences.getBoolean(key, false);
