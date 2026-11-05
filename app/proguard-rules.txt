@@ -1,0 +1,35 @@
+# R8 rules for KRR. Library rules (Media3, Room, OkHttp, AndroidX, Play services)
+# come from the libraries' consumer rules; only app-specific cases are listed here.
+
+# Keep line numbers in crash reports (stack traces can be retraced with mapping.txt).
+-keepattributes SourceFile,LineNumberTable
+-renamesourcefileattribute SourceFile
+
+# --- Gson ---------------------------------------------------------------------
+# Gson 2.9 has no bundled rules. It needs generic signatures for TypeToken and
+# maps JSON keys to field names, so model fields must not be renamed or removed.
+-keepattributes Signature, *Annotation*, InnerClasses, EnclosingMethod
+-keep class * extends com.google.gson.reflect.TypeToken
+-keep class com.google.gson.reflect.TypeToken { *; }
+
+# Classes (de)serialized with Gson. Renaming their fields would break saved
+# settings (proxy, MPD servers) and parsing of server responses.
+-keep class com.devnull.radio.proxy.ProxySettings { <fields>; <init>(...); }
+-keep class com.devnull.radio.players.mpd.MPDServerData { <fields>; <init>(...); }
+-keep class com.devnull.radio.CountryCodeDictionary$Country { <fields>; <init>(...); }
+-keep class com.devnull.radio.station.live.metadata.lastfm.data.** { <fields>; <init>(...); }
+
+# --- Room ---------------------------------------------------------------------
+# Room 2.4 instantiates the generated <Database>_Impl via reflection. Its bundled rule
+# keeps the class but, in R8 full mode (AGP 9 default), not the no-arg constructor.
+-keep class * extends androidx.room.RoomDatabase { <init>(); }
+
+# --- Reflection in app code ---------------------------------------------------
+# RecyclerAwareNestedScrollView reads NestedScrollView.mScroller via reflection.
+-keepclassmembers class androidx.core.widget.NestedScrollView {
+    *** mScroller;
+}
+
+# --- Classes referenced only by name ------------------------------------------
+# Cast options provider is referenced from a <meta-data> string in the play manifest.
+-keep class com.devnull.radio.CastOptionsProvider { <init>(); }
