@@ -51,7 +51,7 @@ android {
         minSdk = 23 // required by Media3 1.9+
         targetSdk = 36
 
-        versionCode = 48
+        versionCode = 49
         versionName = "3" + "." + getTimestamp()
 
         multiDexEnabled = true
