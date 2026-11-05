@@ -51,7 +51,7 @@ android {
         minSdk = 23 // required by Media3 1.9+
         targetSdk = 36
 
-        versionCode = 49
+        versionCode = 50
         versionName = "3" + "." + getTimestamp()
 
         multiDexEnabled = true
@@ -104,7 +104,8 @@ android {
 
     buildTypes {
         release {
-            minifyEnabled = false
+            minifyEnabled = true
+            shrinkResources = true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.txt'
         }
     }
