@@ -69,6 +69,8 @@ public class ExoPlayerWrapper implements PlayerWrapper, IcyDataSource.IcyDataSou
     private long currentPlaybackTransferredBytes;
 
     private boolean isHls;
+    // Set from the loader thread by IcyDataSource once connected.
+    private volatile String streamContentType;
     private boolean isPlayingFlag;
 
     private Handler playerThreadHandler;
@@ -151,6 +153,7 @@ public class ExoPlayerWrapper implements PlayerWrapper, IcyDataSource.IcyDataSou
         }
         if (!streamUrl.equals(this.streamUrl)) {
             currentPlaybackTransferredBytes = 0;
+            streamContentType = null;
         }
 
         this.context = context;
@@ -289,6 +292,11 @@ public class ExoPlayerWrapper implements PlayerWrapper, IcyDataSource.IcyDataSou
     }
 
     @Override
+    public void onDataSourceContentType(@NonNull String contentType) {
+        streamContentType = contentType;
+    }
+
+    @Override
     public void onDataSourceConnected() {
 
     }
@@ -417,7 +425,35 @@ public class ExoPlayerWrapper implements PlayerWrapper, IcyDataSource.IcyDataSou
 
     @Override
     public String getExtension() {
-        return isHls ? "ts" : "mp3";
+        return isHls ? "ts" : extensionForContentType(streamContentType);
+    }
+
+    /**
+     * File extension for a recording of a stream with the given MIME type. The recorded bytes
+     * are the raw stream (minus ICY metadata), so the extension must match the stream codec.
+     */
+    static String extensionForContentType(@Nullable String contentType) {
+        if (contentType == null) {
+            return "mp3";
+        }
+        // Strip parameters such as "; charset=..."
+        final String type = contentType.split(";", 2)[0].trim().toLowerCase(java.util.Locale.US);
+        switch (type) {
+            case "audio/aac":
+            case "audio/aacp":
+            case "audio/x-aac":
+            case "audio/aac-adts":
+                return "aac";
+            case "audio/ogg":
+            case "application/ogg":
+            case "audio/opus":
+                return "ogg";
+            case "audio/flac":
+            case "audio/x-flac":
+                return "flac";
+            default:
+                return "mp3";
+        }
     }
 
     private void cancelStopTask() {

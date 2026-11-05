@@ -80,6 +80,12 @@ public class IcyDataSource implements HttpDataSource {
         void onDataSourceStreamLiveInfo(StreamLiveInfo streamLiveInfo);
 
         void onDataSourceBytesRead(byte[] buffer, int offset, int length);
+
+        /**
+         * Called after connecting with the stream's lower-case MIME type (e.g. "audio/aacp").
+         */
+        default void onDataSourceContentType(@NonNull String contentType) {
+        }
     }
 
     private static final String TAG = "IcyDataSource";
@@ -166,6 +172,7 @@ public class IcyDataSource implements HttpDataSource {
 
         opened = true;
 
+        dataSourceListener.onDataSourceContentType(type);
         dataSourceListener.onDataSourceConnected();
         transferListener.onTransferStart(this, dataSpec, true);
 
