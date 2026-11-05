@@ -42,3 +42,6 @@ build/*
 .DS_Store
 
 *.aab
+
+# Kotlin compiler daemon session files
+.kotlin/
