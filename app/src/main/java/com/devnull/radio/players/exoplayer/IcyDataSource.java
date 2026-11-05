@@ -5,11 +5,14 @@ import android.net.Uri;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-
-import com.google.android.exoplayer2.upstream.DataSpec;
-import com.google.android.exoplayer2.upstream.DefaultHttpDataSource;
-import com.google.android.exoplayer2.upstream.HttpDataSource;
-import com.google.android.exoplayer2.upstream.TransferListener;
+import androidx.annotation.OptIn;
+import androidx.media3.common.C;
+import androidx.media3.common.PlaybackException;
+import androidx.media3.common.util.UnstableApi;
+import androidx.media3.datasource.DataSpec;
+import androidx.media3.datasource.DefaultHttpDataSource;
+import androidx.media3.datasource.HttpDataSource;
+import androidx.media3.datasource.TransferListener;
 import com.devnull.radio.station.live.ShoutcastInfo;
 import com.devnull.radio.station.live.StreamLiveInfo;
 
@@ -38,6 +41,7 @@ import static okhttp3.internal.Util.closeQuietly;
  * After reconnecting time has passed
  * {@link IcyDataSourceListener#onDataSourceConnectionLostIrrecoverably()} will be called.
  **/
+@OptIn(markerClass = UnstableApi.class)
 public class IcyDataSource implements HttpDataSource {
 
     // Same rule as HttpDataSource.REJECT_PAYWALL_TYPES, which was removed in ExoPlayer 2.12.
@@ -133,14 +137,17 @@ public class IcyDataSource implements HttpDataSource {
             response = httpClient.newCall(request).execute();
         } catch (IOException e) {
             throw new HttpDataSourceException("Unable to connect to " + dataSpec.uri.toString(), e,
-                    dataSpec, HttpDataSourceException.TYPE_OPEN);
+                    dataSpec, PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED,
+                    HttpDataSourceException.TYPE_OPEN);
         }
 
         final int responseCode = response.code();
 
         if (!response.isSuccessful()) {
             final Map<String, List<String>> headers = request.headers().toMultimap();
-            throw new InvalidResponseCodeException(responseCode, headers, dataSpec);
+            closeQuietly(response);
+            throw new InvalidResponseCodeException(responseCode, response.message(), null,
+                    headers, dataSpec, new byte[0]);
         }
 
         responseBody = response.body();
@@ -197,7 +204,9 @@ public class IcyDataSource implements HttpDataSource {
     public int read(byte[] buffer, int offset, int readLength) throws HttpDataSourceException {
         try {
             final int bytesTransferred = readInternal(buffer, offset, readLength);
-            transferListener.onBytesTransferred(this, dataSpec, true, bytesTransferred);
+            if (bytesTransferred > 0) {
+                transferListener.onBytesTransferred(this, dataSpec, true, bytesTransferred);
+            }
             return bytesTransferred;
         } catch (HttpDataSourceException readError) {
             dataSourceListener.onDataSourceConnectionLost();
@@ -236,7 +245,8 @@ public class IcyDataSource implements HttpDataSource {
 
     private int readInternal(byte[] buffer, int offset, int readLength) throws HttpDataSourceException {
         if (responseBody == null) {
-            throw new HttpDataSourceException(dataSpec, HttpDataSourceException.TYPE_READ);
+            throw new HttpDataSourceException(dataSpec, PlaybackException.ERROR_CODE_IO_UNSPECIFIED,
+                    HttpDataSourceException.TYPE_READ);
         }
 
         InputStream stream = responseBody.byteStream();
@@ -245,7 +255,13 @@ public class IcyDataSource implements HttpDataSource {
         try {
             bytesRead = stream.read(buffer, offset, readLength);
         } catch (IOException e) {
-            throw new HttpDataSourceException(e, dataSpec, HttpDataSourceException.TYPE_READ);
+            throw new HttpDataSourceException(e, dataSpec,
+                    PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED,
+                    HttpDataSourceException.TYPE_READ);
+        }
+
+        if (bytesRead == -1) {
+            return C.RESULT_END_OF_INPUT;
         }
 
         sendToDataSourceListenersWithoutMetadata(buffer, offset, bytesRead);

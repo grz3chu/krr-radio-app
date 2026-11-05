@@ -48,7 +48,7 @@ android {
 
     defaultConfig {
         applicationId = "com.devnull.radio"
-        minSdk = 21
+        minSdk = 23 // required by Media3 1.9+
         targetSdk = 36
 
         versionCode = 48
@@ -134,7 +134,7 @@ android {
 }
 
 ext {
-    exoplayerVersion = '2.13.3' // 2.11.x was only on JCenter; 2.13.3 is the oldest on Google Maven
+    media3Version = '1.11.1'
     iconicsVersion = '4.0.2'
 }
 
@@ -160,8 +160,8 @@ dependencies {
     implementation 'com.squareup.picasso:picasso:2.8'
     //noinspection GradleDependency
     implementation 'jp.wasabeef:picasso-transformations:2.4.0'
-    implementation "com.google.android.exoplayer:exoplayer-core:$exoplayerVersion"
-    implementation "com.google.android.exoplayer:exoplayer-hls:$exoplayerVersion"
+    implementation "androidx.media3:media3-exoplayer:$media3Version"
+    implementation "androidx.media3:media3-exoplayer-hls:$media3Version"
     implementation "com.mikepenz:iconics-core:$iconicsVersion"
     implementation "com.mikepenz:iconics-views:$iconicsVersion"
     implementation 'com.mikepenz:google-material-typeface:3.0.1.4.original-kotlin@aar'
