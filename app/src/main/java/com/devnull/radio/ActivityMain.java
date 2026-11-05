@@ -424,9 +424,9 @@ public class ActivityMain extends AppCompatActivity implements SearchView.OnQuer
 
     /**
      * Apps targeting Android 15+ are always drawn edge-to-edge (behind the status and navigation
-     * bars). Do the same on all versions and pad the layout ourselves: top and sides on the root
-     * view (painted with the theme's former status bar colour), bottom is left to the
-     * BottomNavigationView, which pads itself with its own background.
+     * bars). Do the same on all versions and pad the root view ourselves (painted with the
+     * theme's former status bar colour). All insets are consumed here, so it works the same
+     * whether the bottom navigation or the drawer is used.
      */
     private void applySystemBarInsets() {
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
@@ -440,10 +440,8 @@ public class ActivityMain extends AppCompatActivity implements SearchView.OnQuer
         ViewCompat.setOnApplyWindowInsetsListener(root, (v, insets) -> {
             final int types = WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.displayCutout();
             Insets bars = insets.getInsets(types);
-            v.setPadding(bars.left, bars.top, bars.right, 0);
-            return new WindowInsetsCompat.Builder(insets)
-                    .setInsets(types, Insets.of(0, 0, 0, bars.bottom))
-                    .build();
+            v.setPadding(bars.left, bars.top, bars.right, bars.bottom);
+            return WindowInsetsCompat.CONSUMED;
         });
     }
 
