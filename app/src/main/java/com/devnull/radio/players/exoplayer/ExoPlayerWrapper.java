@@ -7,33 +7,34 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.net.ConnectivityManager;
-import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.OptIn;
+import androidx.media3.common.AudioAttributes;
+import androidx.media3.common.C;
+import androidx.media3.common.MediaItem;
+import androidx.media3.common.Metadata;
+import androidx.media3.common.PlaybackException;
+import androidx.media3.common.Player;
+import androidx.media3.common.util.UnstableApi;
+import androidx.media3.datasource.DataSource;
+import androidx.media3.datasource.HttpDataSource;
+import androidx.media3.exoplayer.ExoPlaybackException;
+import androidx.media3.exoplayer.ExoPlayer;
+import androidx.media3.exoplayer.analytics.AnalyticsListener;
+import androidx.media3.exoplayer.hls.HlsMediaSource;
+import androidx.media3.exoplayer.source.MediaSource;
+import androidx.media3.exoplayer.source.ProgressiveMediaSource;
+import androidx.media3.exoplayer.upstream.DefaultBandwidthMeter;
+import androidx.media3.exoplayer.upstream.DefaultLoadErrorHandlingPolicy;
+import androidx.media3.extractor.metadata.icy.IcyHeaders;
+import androidx.media3.extractor.metadata.icy.IcyInfo;
+import androidx.media3.extractor.metadata.id3.Id3Frame;
 import androidx.preference.PreferenceManager;
-
-import com.google.android.exoplayer2.C;
-import com.google.android.exoplayer2.ExoPlaybackException;
-import com.google.android.exoplayer2.Player;
-import com.google.android.exoplayer2.SimpleExoPlayer;
-import com.google.android.exoplayer2.analytics.AnalyticsListener;
-import com.google.android.exoplayer2.audio.AudioAttributes;
-import com.google.android.exoplayer2.metadata.Metadata;
-import com.google.android.exoplayer2.metadata.MetadataOutput;
-import com.google.android.exoplayer2.metadata.icy.IcyHeaders;
-import com.google.android.exoplayer2.metadata.icy.IcyInfo;
-import com.google.android.exoplayer2.metadata.id3.Id3Frame;
-import com.google.android.exoplayer2.source.MediaSource;
-import com.google.android.exoplayer2.source.ProgressiveMediaSource;
-import com.google.android.exoplayer2.source.hls.HlsMediaSource;
-import com.google.android.exoplayer2.upstream.DataSource;
-import com.google.android.exoplayer2.upstream.DefaultBandwidthMeter;
-import com.google.android.exoplayer2.upstream.DefaultLoadErrorHandlingPolicy;
-import com.google.android.exoplayer2.upstream.HttpDataSource;
 import com.devnull.radio.BuildConfig;
 import com.devnull.radio.station.live.ShoutcastInfo;
 import com.devnull.radio.station.live.StreamLiveInfo;
@@ -50,16 +51,17 @@ import java.util.Map;
 
 import okhttp3.OkHttpClient;
 
-public class ExoPlayerWrapper implements PlayerWrapper, IcyDataSource.IcyDataSourceListener, MetadataOutput {
+@OptIn(markerClass = UnstableApi.class)
+public class ExoPlayerWrapper implements PlayerWrapper, IcyDataSource.IcyDataSourceListener {
 
     final private String TAG = "ExoPlayerWrapper";
 
-    private SimpleExoPlayer player;
+    private ExoPlayer player;
     private PlayListener stateListener;
 
     private String streamUrl;
 
-    private DefaultBandwidthMeter bandwidthMeter = new DefaultBandwidthMeter();
+    private DefaultBandwidthMeter bandwidthMeter;
 
     private RecordableListener recordableListener;
 
@@ -67,6 +69,8 @@ public class ExoPlayerWrapper implements PlayerWrapper, IcyDataSource.IcyDataSou
     private long currentPlaybackTransferredBytes;
 
     private boolean isHls;
+    // Set from the loader thread by IcyDataSource once connected.
+    private volatile String streamContentType;
     private boolean isPlayingFlag;
 
     private Handler playerThreadHandler;
@@ -84,7 +88,8 @@ public class ExoPlayerWrapper implements PlayerWrapper, IcyDataSource.IcyDataSou
 
                 cancelStopTask();
 
-                player.prepare(audioSource);
+                player.setMediaSource(audioSource);
+                player.prepare();
                 player.setPlayWhenReady(true);
             }
         }
@@ -101,11 +106,11 @@ public class ExoPlayerWrapper implements PlayerWrapper, IcyDataSource.IcyDataSou
         }
 
         @Override
-        public long getRetryDelayMsFor(
-                int dataType,
-                long loadDurationMs,
-                IOException exception,
-                int errorCount) {
+        public long getRetryDelayMsFor(LoadErrorInfo loadErrorInfo) {
+            final int dataType = loadErrorInfo.mediaLoadData.dataType;
+            final long loadDurationMs = loadErrorInfo.loadEventInfo.loadDurationMs;
+            final IOException exception = loadErrorInfo.exception;
+            final int errorCount = loadErrorInfo.errorCount;
 
             int retryDelay = getSanitizedRetryDelaySettingsMs();
 
@@ -148,6 +153,7 @@ public class ExoPlayerWrapper implements PlayerWrapper, IcyDataSource.IcyDataSou
         }
         if (!streamUrl.equals(this.streamUrl)) {
             currentPlaybackTransferredBytes = 0;
+            streamContentType = null;
         }
 
         this.context = context;
@@ -161,14 +167,17 @@ public class ExoPlayerWrapper implements PlayerWrapper, IcyDataSource.IcyDataSou
             player.stop();
         }
 
+        if (bandwidthMeter == null) {
+            bandwidthMeter = new DefaultBandwidthMeter.Builder(context.getApplicationContext()).build();
+        }
+
         if (player == null) {
-            player = new SimpleExoPlayer.Builder(context).build();
-            player.setAudioAttributes(new AudioAttributes.Builder().setContentType(C.CONTENT_TYPE_MUSIC)
+            player = new ExoPlayer.Builder(context).build();
+            player.setAudioAttributes(new AudioAttributes.Builder().setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
                     .setUsage(isAlarm ? C.USAGE_ALARM : C.USAGE_MEDIA).build(), false);
 
             player.addListener(new ExoPlayerListener());
             player.addAnalyticsListener(new AnalyticEventListener());
-            player.addMetadataOutput(this);
         }
 
         if (playerThreadHandler == null) {
@@ -183,17 +192,18 @@ public class ExoPlayerWrapper implements PlayerWrapper, IcyDataSource.IcyDataSou
 
         DataSource.Factory dataSourceFactory = new RadioDataSourceFactory(httpClient, bandwidthMeter, this, retryTimeout, retryDelay);
         // Produces Extractor instances for parsing the media data.
+        final MediaItem mediaItem = MediaItem.fromUri(streamUrl);
         if (!isHls) {
             audioSource = new ProgressiveMediaSource.Factory(dataSourceFactory)
                     .setLoadErrorHandlingPolicy(new CustomLoadErrorHandlingPolicy())
-                    .createMediaSource(Uri.parse(streamUrl));
-            player.prepare(audioSource);
+                    .createMediaSource(mediaItem);
         } else {
             audioSource = new HlsMediaSource.Factory(dataSourceFactory)
                     .setLoadErrorHandlingPolicy(new CustomLoadErrorHandlingPolicy())
-                    .createMediaSource(Uri.parse(streamUrl));
-            player.prepare(audioSource);
+                    .createMediaSource(mediaItem);
         }
+        player.setMediaSource(audioSource);
+        player.prepare();
 
         player.setPlayWhenReady(true);
 
@@ -282,6 +292,11 @@ public class ExoPlayerWrapper implements PlayerWrapper, IcyDataSource.IcyDataSou
     }
 
     @Override
+    public void onDataSourceContentType(@NonNull String contentType) {
+        streamContentType = contentType;
+    }
+
+    @Override
     public void onDataSourceConnected() {
 
     }
@@ -291,8 +306,7 @@ public class ExoPlayerWrapper implements PlayerWrapper, IcyDataSource.IcyDataSou
 
     }
 
-    @Override
-    public void onMetadata(Metadata metadata) {
+    void onMetadata(Metadata metadata) {
         if (BuildConfig.DEBUG) Log.d(TAG, "META: " + metadata.toString());
         if ((metadata != null)) {
             final int length = metadata.length();
@@ -411,7 +425,35 @@ public class ExoPlayerWrapper implements PlayerWrapper, IcyDataSource.IcyDataSou
 
     @Override
     public String getExtension() {
-        return isHls ? "ts" : "mp3";
+        return isHls ? "ts" : extensionForContentType(streamContentType);
+    }
+
+    /**
+     * File extension for a recording of a stream with the given MIME type. The recorded bytes
+     * are the raw stream (minus ICY metadata), so the extension must match the stream codec.
+     */
+    static String extensionForContentType(@Nullable String contentType) {
+        if (contentType == null) {
+            return "mp3";
+        }
+        // Strip parameters such as "; charset=..."
+        final String type = contentType.split(";", 2)[0].trim().toLowerCase(java.util.Locale.US);
+        switch (type) {
+            case "audio/aac":
+            case "audio/aacp":
+            case "audio/x-aac":
+            case "audio/aac-adts":
+                return "aac";
+            case "audio/ogg":
+            case "application/ogg":
+            case "audio/opus":
+                return "ogg";
+            case "audio/flac":
+            case "audio/x-flac":
+                return "flac";
+            default:
+                return "mp3";
+        }
     }
 
     private void cancelStopTask() {
@@ -421,16 +463,23 @@ public class ExoPlayerWrapper implements PlayerWrapper, IcyDataSource.IcyDataSou
         }
     }
 
-    private class ExoPlayerListener implements Player.EventListener {
+    private class ExoPlayerListener implements Player.Listener {
 
         @Override
-        public void onPlayerError(ExoPlaybackException error) {
+        public void onPlayerError(@NonNull PlaybackException error) {
             Log.d(TAG, "Player error: ", error);
+            final boolean isSourceError = error instanceof ExoPlaybackException
+                    && ((ExoPlaybackException) error).type == ExoPlaybackException.TYPE_SOURCE;
             // Stop playing since it is either irrecoverable error in the player or our data source failed to reconnect.
-            if (fullStopTask != null || error.type != ExoPlaybackException.TYPE_SOURCE) {
+            if (fullStopTask != null || !isSourceError) {
                 stop();
                 stateListener.onPlayerError(R.string.error_play_stream);
             }
+        }
+
+        @Override
+        public void onMetadata(@NonNull Metadata metadata) {
+            ExoPlayerWrapper.this.onMetadata(metadata);
         }
     }
 
@@ -451,7 +500,7 @@ public class ExoPlayerWrapper implements PlayerWrapper, IcyDataSource.IcyDataSou
         }
 
         @Override
-        public void onPlayerError(EventTime eventTime, ExoPlaybackException error) {
+        public void onPlayerError(@NonNull EventTime eventTime, @NonNull PlaybackException error) {
             Log.d(TAG, "Player error at playback position " + eventTime.currentPlaybackPositionMs + "ms: ", error);
         }
     }

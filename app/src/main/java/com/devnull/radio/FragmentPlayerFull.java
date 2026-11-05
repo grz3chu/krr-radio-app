@@ -389,7 +389,10 @@ public class FragmentPlayerFull extends Fragment {
     }
 
     private void startUpdating() {
-        if (!isVisible()) {
+        // Don't use isVisible(): when the fragment is shown, onHiddenChanged(false) is called
+        // before its view is made VISIBLE, so isVisible() is still false and the periodic UI
+        // refresh (play time, traffic, recording size) would never start.
+        if (!isAdded() || isHidden() || getView() == null) {
             return;
         }
 
@@ -543,7 +546,10 @@ public class FragmentPlayerFull extends Fragment {
             final RunningRecordingInfo recordingInfo = runningRecordings.entrySet().iterator().next().getValue();
 
             groupRecordings.setVisibility(View.VISIBLE);
-            imgRecordingIcon.startAnimation(AnimationUtils.loadAnimation(getContext(), R.anim.blink_recording));
+            // Called every second by the timed update; restarting the animation would make it stutter.
+            if (imgRecordingIcon.getAnimation() == null) {
+                imgRecordingIcon.startAnimation(AnimationUtils.loadAnimation(getContext(), R.anim.blink_recording));
+            }
             textViewRecordingSize.setText(Utils.getReadableBytes(recordingInfo.getBytesWritten()));
             textViewRecordingName.setText(recordingInfo.getFileName());
         } else {
