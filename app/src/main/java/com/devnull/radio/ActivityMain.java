@@ -1,5 +1,6 @@
 package com.devnull.radio;
 
+import android.Manifest;
 import android.app.TimePickerDialog;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -10,9 +11,11 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.res.Resources;
 import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.util.Log;
+import android.util.TypedValue;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -29,8 +32,14 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.SearchView;
 import androidx.appcompat.widget.Toolbar;
 import androidx.coordinatorlayout.widget.CoordinatorLayout;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+import androidx.core.graphics.Insets;
 import androidx.core.view.GravityCompat;
 import androidx.core.view.MenuItemCompat;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.fragment.app.DialogFragment;
 import androidx.fragment.app.Fragment;
@@ -48,6 +57,7 @@ import com.google.android.material.navigation.NavigationView;
 import com.google.android.material.tabs.TabLayout;
 import com.mikepenz.iconics.Iconics;
 import com.devnull.radio.alarm.FragmentAlarm;
+import com.devnull.radio.alarm.RadioAlarmManager;
 import com.devnull.radio.alarm.TimePickerFragment;
 import com.devnull.radio.cast.CastAwareActivity;
 import com.devnull.radio.interfaces.IFragmentSearchable;
@@ -98,6 +108,8 @@ public class ActivityMain extends AppCompatActivity implements SearchView.OnQuer
 
     public static final int PERM_REQ_STORAGE_FAV_SAVE = 1;
     public static final int PERM_REQ_STORAGE_FAV_LOAD = 2;
+    public static final int PERM_REQ_NOTIFICATIONS = 3;
+    private static final String PREF_NOTIFICATION_PERMISSION_ASKED = "notification_permission_asked";
 
     private SearchView mSearchView;
 
@@ -149,6 +161,8 @@ public class ActivityMain extends AppCompatActivity implements SearchView.OnQuer
         setTheme(Utils.getThemeResId(this));
         setContentView(R.layout.layout_main);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        applySystemBarInsets();
+        requestNotificationPermissionIfNeeded();
 
         try {
             File dir = new File(getFilesDir().getAbsolutePath());
@@ -322,23 +336,16 @@ public class ActivityMain extends AppCompatActivity implements SearchView.OnQuer
         Fragment f = null;
         String backStackTag = String.valueOf(selectedMenuItem);
 
-        switch (selectedMenuItem) {
-            case R.id.nav_item_stations:
-                f = new FragmentTabs();
-                break;
-            case R.id.nav_item_starred:
-                f = new FragmentStarred();
-                break;
-            case R.id.nav_item_history:
-                f = new FragmentHistory();
-                break;
-            case R.id.nav_item_alarm:
-                f = new FragmentAlarm();
-                break;
-            case R.id.nav_item_settings:
-                f = new FragmentSettings();
-                break;
-            default:
+        if (selectedMenuItem == R.id.nav_item_stations) {
+            f = new FragmentTabs();
+        } else if (selectedMenuItem == R.id.nav_item_starred) {
+            f = new FragmentStarred();
+        } else if (selectedMenuItem == R.id.nav_item_history) {
+            f = new FragmentHistory();
+        } else if (selectedMenuItem == R.id.nav_item_alarm) {
+            f = new FragmentAlarm();
+        } else if (selectedMenuItem == R.id.nav_item_settings) {
+            f = new FragmentSettings();
         }
 
         // Without "Immediate", "Settings" fragment may become forever stuck in limbo receiving onResume.
@@ -413,6 +420,39 @@ public class ActivityMain extends AppCompatActivity implements SearchView.OnQuer
             return;
         }
         super.onBackPressed();
+    }
+
+    /**
+     * Apps targeting Android 15+ are always drawn edge-to-edge (behind the status and navigation
+     * bars). Do the same on all versions and pad the root view ourselves (painted with the
+     * theme's former status bar colour). All insets are consumed here, so it works the same
+     * whether the bottom navigation or the drawer is used.
+     */
+    private void applySystemBarInsets() {
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
+
+        final View root = findViewById(R.id.main_content);
+        TypedValue statusBarColor = new TypedValue();
+        if (getTheme().resolveAttribute(android.R.attr.statusBarColor, statusBarColor, true)) {
+            root.setBackgroundColor(statusBarColor.data);
+        }
+
+        ViewCompat.setOnApplyWindowInsetsListener(root, (v, insets) -> {
+            final int types = WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.displayCutout();
+            Insets bars = insets.getInsets(types);
+            v.setPadding(bars.left, bars.top, bars.right, bars.bottom);
+            return WindowInsetsCompat.CONSUMED;
+        });
+    }
+
+    private void requestNotificationPermissionIfNeeded() {
+        // Android 13+: without this runtime permission the player notification is hidden.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                && ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+                && !sharedPref.getBoolean(PREF_NOTIFICATION_PERMISSION_ASKED, false)) {
+            sharedPref.edit().putBoolean(PREF_NOTIFICATION_PERMISSION_ASKED, true).apply();
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.POST_NOTIFICATIONS}, PERM_REQ_NOTIFICATIONS);
+        }
     }
 
     @Override
@@ -611,15 +651,12 @@ public class ActivityMain extends AppCompatActivity implements SearchView.OnQuer
         }
         menuItemMpd.setVisible(mpd_is_visible);
 
-        switch (selectedMenuItem) {
-            case R.id.nav_item_stations: {
+        if (selectedMenuItem == R.id.nav_item_stations) {
                 menuItemSleepTimer.setVisible(true);
                 menuItemSearch.setVisible(true);
                 myToolbar.setTitle(R.string.nav_item_stations);
                 myToolbar.setNavigationIcon(R.drawable.logo_radio_krr_menu);
-                break;
-            }
-            case R.id.nav_item_starred: {
+        } else if (selectedMenuItem == R.id.nav_item_starred) {
                 menuItemSleepTimer.setVisible(true);
                 //menuItemSearch.setVisible(true);
                 menuItemSave.setVisible(true);
@@ -637,9 +674,7 @@ public class ActivityMain extends AppCompatActivity implements SearchView.OnQuer
                     menuItemDelete.setVisible(true).setTitle(R.string.action_delete_favorites);
                 }
                 myToolbar.setTitle(R.string.nav_item_starred);
-                break;
-            }
-            case R.id.nav_item_history: {
+        } else if (selectedMenuItem == R.id.nav_item_history) {
                 menuItemSleepTimer.setVisible(true);
                 //menuItemSearch.setVisible(true);
                 menuItemSave.setVisible(true);
@@ -650,15 +685,10 @@ public class ActivityMain extends AppCompatActivity implements SearchView.OnQuer
                 }
                 myToolbar.setTitle(R.string.nav_item_history);
                 myToolbar.setNavigationIcon(R.drawable.logo_radio_krr_menu);
-
-                break;
-            }
-            case R.id.nav_item_alarm: {
+        } else if (selectedMenuItem == R.id.nav_item_alarm) {
                 menuItemAddAlarm.setVisible(true);
                 myToolbar.setTitle(R.string.nav_item_alarm);
                 myToolbar.setNavigationIcon(R.drawable.logo_radio_krr_menu);
-                break;
-            }
  /* settings fragment sets the toolbar title depending on the current preference screen
             case R.id.nav_item_settings: {
                 myToolbar.setTitle(R.string.nav_item_settings);
@@ -726,11 +756,11 @@ public class ActivityMain extends AppCompatActivity implements SearchView.OnQuer
 
     @Override
     public boolean onOptionsItemSelected(MenuItem menuItem) {
-        switch (menuItem.getItemId()) {
-            case android.R.id.home:
+        final int itemId = menuItem.getItemId();
+        if (itemId == android.R.id.home) {
                 mDrawerLayout.openDrawer(GravityCompat.START);  // OPEN DRAWER
                 return true;
-            case R.id.action_save:
+        } else if (itemId == R.id.action_save) {
                 try {
                     if (Utils.verifyStoragePermissions(this, PERM_REQ_STORAGE_FAV_SAVE)) {
                         SaveFavourites();
@@ -740,7 +770,7 @@ public class ActivityMain extends AppCompatActivity implements SearchView.OnQuer
                 }
 
                 return true;
-            case R.id.action_load:
+        } else if (itemId == R.id.action_load) {
                 try {
                     if (Utils.verifyStoragePermissions(this, PERM_REQ_STORAGE_FAV_LOAD)) {
                         LoadFavourites();
@@ -749,13 +779,13 @@ public class ActivityMain extends AppCompatActivity implements SearchView.OnQuer
                     Log.e("MAIN", e.toString());
                 }
                 return true;
-            case R.id.action_set_sleep_timer:
+        } else if (itemId == R.id.action_set_sleep_timer) {
                 changeTimer();
                 return true;
-            case R.id.action_mpd:
+        } else if (itemId == R.id.action_mpd) {
                 selectMPDServer();
                 return true;
-            case R.id.action_delete:
+        } else if (itemId == R.id.action_delete) {
                 if (selectedMenuItem == R.id.nav_item_history) {
                     new AlertDialog.Builder(this)
                             .setMessage(this.getString(R.string.alert_delete_history))
@@ -795,15 +825,15 @@ public class ActivityMain extends AppCompatActivity implements SearchView.OnQuer
                             .show();
                 }
                 return true;
-            case R.id.action_list_view:
+        } else if (itemId == R.id.action_list_view) {
                 sharedPref.edit().putBoolean("icons_only_favorites_style", false).apply();
                 recreate();
                 return true;
-            case R.id.action_icons_view:
+        } else if (itemId == R.id.action_icons_view) {
                 sharedPref.edit().putBoolean("icons_only_favorites_style", true).apply();
                 recreate();
                 return true;
-            case R.id.action_add_alarm:
+        } else if (itemId == R.id.action_add_alarm) {
                 TimePickerFragment newFragment = new TimePickerFragment();
                 newFragment.setCallback(this);
                 newFragment.show(getSupportFragmentManager(), "timePicker");
@@ -828,6 +858,7 @@ public class ActivityMain extends AppCompatActivity implements SearchView.OnQuer
         if (historyManager.size() > 0 && currentFragment instanceof FragmentAlarm) {
             DataRadioStation station = historyManager.getList().get(0);
             ((FragmentAlarm) currentFragment).getRam().add(station, hourOfDay, minute);
+            RadioAlarmManager.askForExactAlarmPermissionIfNeeded(this);
         }
     }
 

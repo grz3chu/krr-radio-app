@@ -83,6 +83,7 @@ public class FragmentAlarm extends Fragment implements TimePickerDialog.OnTimeSe
     public void onTimeSet(TimePicker view, int hourOfDay, int minute) {
         ram.changeTime(clickedAlarm.id,hourOfDay,minute);
         view.invalidate();
+        RadioAlarmManager.askForExactAlarmPermissionIfNeeded(getActivity());
     }
 
     public RadioAlarmManager getRam() {

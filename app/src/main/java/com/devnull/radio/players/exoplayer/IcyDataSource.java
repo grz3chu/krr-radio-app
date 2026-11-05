@@ -40,6 +40,17 @@ import static okhttp3.internal.Util.closeQuietly;
  **/
 public class IcyDataSource implements HttpDataSource {
 
+    // Same rule as HttpDataSource.REJECT_PAYWALL_TYPES, which was removed in ExoPlayer 2.12.
+    private static boolean isAcceptableContentType(@Nullable String contentType) {
+        if (contentType == null || contentType.isEmpty()) {
+            return false;
+        }
+        String type = contentType.toLowerCase(java.util.Locale.US);
+        return (!type.contains("text") || type.contains("text/vtt"))
+                && !type.contains("html")
+                && !type.contains("xml");
+    }
+
     public static final long DEFAULT_TIME_UNTIL_STOP_RECONNECTING = 2 * 60 * 1000; // 2 minutes
 
     public static final long DEFAULT_DELAY_BETWEEN_RECONNECTIONS = 0;
@@ -141,7 +152,7 @@ public class IcyDataSource implements HttpDataSource {
 
         final String type = contentType == null ? getMimeType(dataSpec.uri.toString(), "audio/mpeg") : contentType.toString().toLowerCase();
 
-        if (!REJECT_PAYWALL_TYPES.evaluate(type)) {
+        if (!isAcceptableContentType(type)) {
             close();
             throw new InvalidContentTypeException(type, dataSpec);
         }

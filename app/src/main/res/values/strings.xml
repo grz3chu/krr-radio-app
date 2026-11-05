@@ -341,4 +341,6 @@
     <string name="context_menu_add_alarm">@string/action_alarm</string>
     <string name="context_menu_create_shortcut">@string/detail_create_shortcut</string>
     <string name="context_menu_delete">@string/action_delete</string>
+    <string name="alert_exact_alarm_permission">To start the radio alarm on time, KRR needs the \"Alarms &amp; reminders\" permission. Without it the alarm may be delayed.</string>
+    <string name="action_open_settings">Open settings</string>
 </resources>

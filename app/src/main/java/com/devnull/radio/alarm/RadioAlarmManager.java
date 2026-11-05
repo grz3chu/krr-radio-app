@@ -1,15 +1,23 @@
 package com.devnull.radio.alarm;
 
+import android.app.Activity;
 import android.app.AlarmManager;
 import android.app.PendingIntent;
+import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.net.Uri;
 import android.os.Build;
 import android.preference.PreferenceManager;
+import android.provider.Settings;
 import android.util.Log;
 
+import androidx.appcompat.app.AlertDialog;
+import androidx.core.app.AlarmManagerCompat;
+
 import com.devnull.radio.BuildConfig;
+import com.devnull.radio.R;
 import com.devnull.radio.station.DataRadioStation;
 
 import java.util.ArrayList;
@@ -27,6 +35,38 @@ public class RadioAlarmManager {
     private Context context;
     private List<DataRadioStationAlarm> list = new ArrayList<DataRadioStationAlarm>();
     final int pendingIntentFlag =  Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? PendingIntent.FLAG_IMMUTABLE : 0;
+
+    public static boolean canScheduleExactAlarms(Context context) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+            return true;
+        }
+        AlarmManager alarmMgr = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+        return alarmMgr != null && alarmMgr.canScheduleExactAlarms();
+    }
+
+    /**
+     * On Android 12+ exact alarms need the "Alarms & reminders" special permission, which is
+     * denied by default for new installs on Android 14+. Explain it and open the system screen.
+     * Once granted, BootReceiver re-schedules all alarms as exact ones.
+     */
+    public static void askForExactAlarmPermissionIfNeeded(final Activity activity) {
+        if (activity == null || canScheduleExactAlarms(activity)) {
+            return;
+        }
+        new AlertDialog.Builder(activity)
+                .setMessage(R.string.alert_exact_alarm_permission)
+                .setPositiveButton(R.string.action_open_settings, (dialog, which) -> {
+                    Intent intent = new Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM,
+                            Uri.parse("package:" + activity.getPackageName()));
+                    try {
+                        activity.startActivity(intent);
+                    } catch (ActivityNotFoundException e) {
+                        Log.e("ALARM", "Cannot open exact alarm settings", e);
+                    }
+                })
+                .setNegativeButton(R.string.no, null)
+                .show();
+    }
     private class AlarmsObservable extends Observable {
         @Override
         public synchronized boolean hasChanged() {
@@ -224,15 +264,14 @@ public class RadioAlarmManager {
                     + " " + calendar.get(Calendar.HOUR_OF_DAY) + ":" + calendar.get(Calendar.MINUTE)
             );
 
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            if (canScheduleExactAlarms(context)) {
                 if(BuildConfig.DEBUG) { Log.d("ALARM","START setAlarmClock"); }
                 alarmMgr.setAlarmClock(new AlarmManager.AlarmClockInfo(calendar.getTimeInMillis(),alarmIntent),alarmIntent);
-            }else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-                if(BuildConfig.DEBUG) { Log.d("ALARM","START setExact"); }
-                alarmMgr.setExact(AlarmManager.RTC_WAKEUP, calendar.getTimeInMillis(), alarmIntent);
-            }else{
-                if(BuildConfig.DEBUG) { Log.d("ALARM","START set"); }
-                alarmMgr.set(AlarmManager.RTC_WAKEUP,calendar.getTimeInMillis(),alarmIntent);
+            } else {
+                // Android 12+ without the "Alarms & reminders" permission: setAlarmClock() would
+                // throw a SecurityException, so fall back to an inexact alarm that may be late.
+                Log.w("ALARM", "Exact alarms not permitted, scheduling inexact alarm");
+                AlarmManagerCompat.setAndAllowWhileIdle(alarmMgr, AlarmManager.RTC_WAKEUP, calendar.getTimeInMillis(), alarmIntent);
             }
         }
     }

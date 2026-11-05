@@ -434,7 +434,17 @@ public class Utils {
             Manifest.permission.WRITE_EXTERNAL_STORAGE
     };
 
+    // Android 11+ (scoped storage): the app may write its own audio/playlist files to the public
+    // Music directory without any permission, and WRITE_EXTERNAL_STORAGE is never granted
+    // anymore on Android 13+ (requesting it would silently block saving and recording).
+    private static boolean storagePermissionNeeded() {
+        return Build.VERSION.SDK_INT < Build.VERSION_CODES.R;
+    }
+
     public static boolean verifyStoragePermissions(Activity activity, int request_id) {
+        if (!storagePermissionNeeded()) {
+            return true;
+        }
         // Check if we have write permission
         int permission = ContextCompat.checkSelfPermission(activity, Manifest.permission.WRITE_EXTERNAL_STORAGE);
 
@@ -452,6 +462,9 @@ public class Utils {
     }
 
     public static boolean verifyStoragePermissions(Fragment fragment, int request_id) {
+        if (!storagePermissionNeeded()) {
+            return true;
+        }
         // Check if we have write permission
         int permission = ContextCompat.checkSelfPermission(fragment.requireContext(), Manifest.permission.WRITE_EXTERNAL_STORAGE);
 

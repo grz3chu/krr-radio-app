@@ -1,6 +1,5 @@
 apply plugin: 'com.android.application'
-apply plugin: 'kotlin-android'
-apply plugin: 'kotlin-android-extensions'
+// Kotlin support is built into AGP 9+, no separate kotlin-android plugin needed.
 
 def getAvailableLocales() {
     def tree = fileTree(dir: 'src/main/res', include: '**/strings.xml')
@@ -29,30 +28,33 @@ def getTimestamp() {
 
 android {
 
-    flavorDimensions "one"
+    flavorDimensions = ["one"]
 
-    compileSdkVersion 33
+    compileSdk = 36
 
-    lintOptions {
-        abortOnError true
+    lint {
+        abortOnError = true
+        disable 'MissingTranslation'
+        // Pre-existing issues surfaced by the stricter AGP 9 lint; new issues still fail the build.
+        baseline = file('lint-baseline.xml')
     }
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 
 
 
     defaultConfig {
-        applicationId "com.devnull.radio"
-        minSdkVersion 16
-        targetSdkVersion 33
+        applicationId = "com.devnull.radio"
+        minSdk = 21
+        targetSdk = 36
 
-        versionCode 48
-        versionName "3" + "." + getTimestamp()
+        versionCode = 48
+        versionName = "3" + "." + getTimestamp()
 
-        multiDexEnabled true
+        multiDexEnabled = true
         vectorDrawables.useSupportLibrary = true
 
         javaCompileOptions {
@@ -74,7 +76,7 @@ android {
         def escapedLocales = getAvailableLocales().collect { "\"" + it + "\"" }
         buildConfigField "String[]", "AVAILABLE_LOCALES", String.format("{ %s }", escapedLocales.join(","))
 
-        testInstrumentationRunner "com.devnull.radio.tests.CustomTestRunner"
+        testInstrumentationRunner = "com.devnull.radio.tests.CustomTestRunner"
 
         // The following argument makes the Android Test Orchestrator run its
         // "pm clear" command after each test invocation. This command ensures
@@ -83,17 +85,17 @@ android {
 
         buildConfigField "java.util.concurrent.atomic.AtomicBoolean", "IS_TESTING", "new java.util.concurrent.atomic.AtomicBoolean(false)"
 
-        multiDexKeepProguard file('multidex-config.pro')
+        multiDexKeepProguard = file('multidex-config.pro')
     }
 
     testOptions {
-        execution 'ANDROIDX_TEST_ORCHESTRATOR'
+        execution = 'ANDROIDX_TEST_ORCHESTRATOR'
     }
 
     sourceSets {
-        // Store flags in subfolder to not pollute drawables
+        // Flags live in a separate (non-nested) resource dir to not pollute drawables
         // https://antonioleiva.com/android-multiple-resource-folders/
-        main.res.srcDirs += ["src/main/res/drawable/flags"]
+        main.res.srcDirs += ["src/main/res-flags"]
 
         androidTest {
             resources.srcDirs += ['src/androidTest/resources']
@@ -102,31 +104,29 @@ android {
 
     buildTypes {
         release {
-            minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.txt'
-
-            lintOptions {
-                disable 'MissingTranslation'
-            }
+            minifyEnabled = false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.txt'
         }
     }
     productFlavors {
         play {
-            dimension "one"
+            dimension = "one"
         }
         free {
-            dimension "one"
+            dimension = "one"
         }
     }
     buildFeatures {
-        aidl true
+        aidl = true
+        buildConfig = true
+        resValues = true
     }
-    namespace 'com.devnull.radio'
-    testNamespace '${applicationId}.test'
+    namespace = 'com.devnull.radio'
+    testNamespace = 'com.devnull.radio.test'
 
     testOptions {
         unitTests.all {
-            useJUnit()
+            useJUnitPlatform()
         }
         animationsDisabled = true
         unitTests.returnDefaultValues = true
@@ -134,7 +134,7 @@ android {
 }
 
 ext {
-    exoplayerVersion = '2.11.7'
+    exoplayerVersion = '2.13.3' // 2.11.x was only on JCenter; 2.13.3 is the oldest on Google Maven
     iconicsVersion = '4.0.2'
 }
 
@@ -159,7 +159,7 @@ dependencies {
     //noinspection GradleDependency 2.8 is newer than 2.71828'
     implementation 'com.squareup.picasso:picasso:2.8'
     //noinspection GradleDependency
-    implementation 'jp.wasabeef:picasso-transformations:2.3.1'
+    implementation 'jp.wasabeef:picasso-transformations:2.4.0'
     implementation "com.google.android.exoplayer:exoplayer-core:$exoplayerVersion"
     implementation "com.google.android.exoplayer:exoplayer-hls:$exoplayerVersion"
     implementation "com.mikepenz:iconics-core:$iconicsVersion"
@@ -170,7 +170,7 @@ dependencies {
     implementation 'info.debatty:java-string-similarity:2.0.0'
     implementation 'me.xdrop:fuzzywuzzy:1.4.0'
     //noinspection GradleDependency
-    implementation 'com.github.zawadz88.materialpopupmenu:material-popup-menu:3.4.0'
+    implementation 'com.github.zawadz88:MaterialPopupMenu:3.4.0'
     implementation 'com.github.ByteHamster:SearchPreference:v2.3.0'
 
     implementation 'androidx.room:room-runtime:2.4.3'
@@ -193,6 +193,7 @@ dependencies {
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.9.1'
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.9.1'
     testRuntimeOnly 'org.junit.vintage:junit-vintage-engine:5.9.1'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.9.1'
 
     androidTestImplementation 'androidx.test:core:1.5.0'
     androidTestImplementation 'androidx.test.ext:junit:1.1.4'
@@ -207,75 +208,17 @@ dependencies {
     androidTestUtil 'androidx.test:orchestrator:1.4.1'
 }
 
+// Build metadata shown in the About screen.
+// NOTE: the old android.applicationVariants API (used for custom APK file names
+// like KRR-free-debug-DEV-<version>-<hash>.apk) was removed in AGP 9.
+def gitHash = providers.exec {
+    commandLine 'git', 'rev-parse', '--short', 'HEAD'
+    ignoreExitValue = true
+}.standardOutput.asText.map { it.trim() ?: 'No commit hash' }.getOrElse('No commit hash')
 
-
-// https://stackoverflow.com/questions/24649240/build-release-apk-with-customize-name-format-in-android-studio
-// https://stackoverflow.com/questions/32092665/resolve-application-label-for-each-build-type/32220436#32220436
-// https://stackoverflow.com/questions/18332474/how-to-set-versionname-in-apk-filename-using-gradle
-
-// Gradle 3.0
-// https://stackoverflow.com/questions/44800028/change-apk-filename-in-gradle-failed-with-gradle3-0-0-alpha4
-
-android.applicationVariants.all { variant ->
-
-    variant.outputs.all { output ->
-
-        // get app_name field from defaultConfig
-        def appName = 'KRR'
-        appName = "${appName}"
-
-        // concat new App name with each flavor's name
-
-        variant.productFlavors.each { flavor ->
-            appName += "-${flavor.name}"
-        }
-
-        // optionally add buildType name
-        appName += "-${variant.buildType.name}"
-
-        // your requirement: if buildType == debug, add DEV to App name
-        if (variant.buildType.name == "debug") {
-            appName += "-DEV"
-        }
-
-        // if you want, you can set a new resValue
-        // variant.resValue 'string', 'app_name', appName
-
-        /*
-         * Gets the version name from the latest Git tag
-         */
-
-        def gitHash = { ->
-            def stdout = new ByteArrayOutputStream()
-            try {
-                exec {
-                    commandLine 'git', 'rev-parse', '--short', 'HEAD'
-                    standardOutput = stdout
-                }
-                return stdout.toString().trim()
-            } catch (Exception ignored) {
-                return "No commit hash"
-            }
-        }
-
-        resValue 'string', 'GIT_HASH', gitHash()
-
-        def getBuildDate = {
-            new Date().format('yyyy-MM-dd HH:mm:ss')
-        }
-
-        resValue 'string', 'BUILD_DATE', getBuildDate()
-
-        def finalName = appName
-
-        if (!versionName.isEmpty()) {
-            finalName += "-" + versionName
-        }
-
-        finalName += "-" + gitHash() + ".apk"
-        // outputFileName = "${variant.name}-${variant.versionName}.apk"
-        outputFileName = finalName
-    }
+android.defaultConfig {
+    resValue 'string', 'GIT_HASH', gitHash
+    resValue 'string', 'BUILD_DATE', new Date().format('yyyy-MM-dd HH:mm:ss')
 }
 
 configurations.all {

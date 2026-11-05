@@ -25,6 +25,7 @@ import com.devnull.radio.R;
 
 import com.devnull.radio.RadioDroidApp;
 import com.devnull.radio.Utils;
+import com.devnull.radio.alarm.RadioAlarmManager;
 import com.devnull.radio.alarm.TimePickerFragment;
 import com.devnull.radio.views.ItemListDialog;
 
@@ -42,6 +43,7 @@ public class StationActions {
         newFragment.setCallback((timePicker, hourOfDay, minute) -> {
             Log.i(TAG, String.format("Alarm time picked %d:%d", hourOfDay, minute));
             radioDroidApp.getAlarmManager().add(station, hourOfDay, minute);
+            RadioAlarmManager.askForExactAlarmPermissionIfNeeded(activity);
         });
         newFragment.show(activity.getSupportFragmentManager(), "timePicker");
     }
@@ -50,20 +52,13 @@ public class StationActions {
         ItemListDialog.create(activity, new int[]{
                 R.string.action_station_visit_website, R.string.action_station_copy_stream_url, R.string.action_station_share
         }, resourceId -> {
-            switch (resourceId) {
-                case R.string.action_station_visit_website: {
+            if (resourceId == R.string.action_station_visit_website) {
                     openStationHomeUrl(activity, station);
-                    break;
-                }
-                case R.string.action_station_copy_stream_url: {
+            } else if (resourceId == R.string.action_station_copy_stream_url) {
                     retrieveAndCopyStreamUrlToClipboard(activity, station);
-                    break;
-                }
-                case R.string.action_station_share: {
+            } else if (resourceId == R.string.action_station_share) {
                     share(activity, station);
-                    break;
                 }
-            }
         }).show();
     }
 

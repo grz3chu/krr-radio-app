@@ -276,24 +276,16 @@ public class FragmentPlayerSmall extends Fragment {
         final PopupMenu dropDownMenu = new PopupMenu(getContext(), buttonMore);
         dropDownMenu.getMenuInflater().inflate(R.menu.menu_player, dropDownMenu.getMenu());
         dropDownMenu.setOnMenuItemClickListener(menuItem -> {
-            switch (menuItem.getItemId()) {
-                case R.id.action_homepage: {
+            final int itemId = menuItem.getItemId();
+            if (itemId == R.id.action_homepage) {
                     StationActions.showWebLinks(requireActivity(), currentStation);
-                    break;
-                }
-                case R.id.action_share: {
+            } else if (itemId == R.id.action_share) {
                     StationActions.share(requireContext(), currentStation);
-                    break;
-                }
-                case R.id.action_set_alarm: {
+            } else if (itemId == R.id.action_set_alarm) {
                     StationActions.setAsAlarm(requireActivity(), currentStation);
-                    break;
-                }
-                case R.id.action_delete_stream_history: {
+            } else if (itemId == R.id.action_delete_stream_history) {
                     trackHistoryRepository.deleteHistory();
-                    break;
                 }
-            }
 
             return true;
         });
