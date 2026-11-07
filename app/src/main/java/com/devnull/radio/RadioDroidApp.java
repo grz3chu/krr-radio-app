@@ -1,5 +1,6 @@
 package com.devnull.radio;
 
+import android.app.Application;
 import android.app.UiModeManager;
 import android.content.SharedPreferences;
 import android.content.res.Configuration;
@@ -7,7 +8,6 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatDelegate;
-import androidx.multidex.MultiDexApplication;
 import androidx.preference.PreferenceManager;
 
 import com.devnull.radio.alarm.RadioAlarmManager;
@@ -33,7 +33,7 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 
-public class RadioDroidApp extends MultiDexApplication {
+public class RadioDroidApp extends Application {
 
     private HistoryManager historyManager;
     private FavouriteManager favouriteManager;
@@ -175,7 +175,7 @@ public class RadioDroidApp extends MultiDexApplication {
             Toast toast = Toast.makeText(this, getResources().getString(R.string.ignore_proxy_settings_invalid), Toast.LENGTH_SHORT);
             toast.show();
         }
-        return Utils.enableTls12OnPreLollipop(builder);
+        return builder;
     }
 
     public OkHttpClient.Builder newHttpClientWithoutProxy() {
@@ -185,7 +185,7 @@ public class RadioDroidApp extends MultiDexApplication {
             builder.addInterceptor(testsInterceptor);
         }
 
-        return Utils.enableTls12OnPreLollipop(builder);
+        return builder;
     }
 
     public boolean setCurrentOkHttpProxy(@NonNull OkHttpClient.Builder builder) {

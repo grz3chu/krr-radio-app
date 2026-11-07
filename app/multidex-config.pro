@@ -1,1 +1,0 @@
--keep class com.devnull.radio.tests.** { *; }
