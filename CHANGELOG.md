@@ -3,10 +3,21 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## [Unreleased]
-
 KRR releases below are numbered by their Google Play `versionCode`; older entries
 are the RadioDroid versions KRR is based on.
+
+## [Unreleased]
+### Changed
+- Networking library updated from OkHttp 3.12 to 5.4
+- AndroidX and Material Components libraries updated to current stable versions
+  (Material Components was previously a beta release)
+
+### Removed
+- Unused SafetyNet dependency and compatibility code for Android versions older
+  than 6.0 (TLS 1.2 workaround, legacy multidex)
+
+### Fixed
+- Country flags missing in release builds
 
 ## [50] - 2026-11-05
 ### Changed
