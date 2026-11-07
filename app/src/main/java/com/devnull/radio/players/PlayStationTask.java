@@ -4,7 +4,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.Uri;
-import android.os.AsyncTask;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -23,10 +22,11 @@ import com.devnull.radio.HistoryManager;
 import com.devnull.radio.R;
 import com.devnull.radio.RadioDroidApp;
 import com.devnull.radio.Utils;
+import com.devnull.radio.utils.BackgroundTask;
 
 import java.lang.ref.WeakReference;
 
-public class PlayStationTask extends AsyncTask<Void, Void, String> {
+public class PlayStationTask extends BackgroundTask<String> {
     public interface PlayFunc {
         void play(String url);
     }
@@ -101,7 +101,7 @@ public class PlayStationTask extends AsyncTask<Void, Void, String> {
     }
 
     @Override
-    protected String doInBackground(Void... params) {
+    protected String doInBackground() {
         Context ctx = contextWeakReference.get();
         if (ctx != null) {
             RadioDroidApp radioDroidApp = (RadioDroidApp) ctx.getApplicationContext();

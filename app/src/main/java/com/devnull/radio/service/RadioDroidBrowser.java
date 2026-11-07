@@ -6,7 +6,6 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v4.media.MediaBrowserCompat;
 import android.support.v4.media.MediaDescriptionCompat;
@@ -25,6 +24,7 @@ import com.devnull.radio.R;
 import com.devnull.radio.RadioDroidApp;
 import com.devnull.radio.Utils;
 import com.devnull.radio.station.DataRadioStation;
+import com.devnull.radio.utils.BackgroundTask;
 
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
@@ -56,7 +56,7 @@ public class RadioDroidBrowser {
 
     private Map<String, DataRadioStation> stationIdToStation = new HashMap<>();
 
-    private static class RetrieveStationsIconAndSendResult extends AsyncTask<Void, Void, Void> {
+    private static class RetrieveStationsIconAndSendResult extends BackgroundTask<Void> {
         private MediaBrowserServiceCompat.Result<List<MediaBrowserCompat.MediaItem>> result;
         private List<DataRadioStation> stations;
         private WeakReference<Context> contextRef;
@@ -117,7 +117,7 @@ public class RadioDroidBrowser {
         }
 
         @Override
-        protected Void doInBackground(Void... voids) {
+        protected Void doInBackground() {
             try {
                 countDownLatch.await(IMAGE_LOAD_TIMEOUT_MS, TimeUnit.MILLISECONDS);
             } catch (InterruptedException e) {

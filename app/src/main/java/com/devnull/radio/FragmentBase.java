@@ -3,7 +3,6 @@ package com.devnull.radio;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.util.Log;
@@ -14,6 +13,7 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.preference.PreferenceManager;
 
 import com.devnull.radio.R;
+import com.devnull.radio.utils.BackgroundTask;
 
 import java.util.HashMap;
 
@@ -27,7 +27,7 @@ public class FragmentBase extends Fragment {
 
     private boolean isCreated = false;
 
-    private AsyncTask task = null;
+    private BackgroundTask<?> task = null;
 
     public FragmentBase() {
     }
@@ -108,9 +108,9 @@ public class FragmentBase extends Fragment {
                 RadioDroidApp radioDroidApp = (RadioDroidApp) getActivity().getApplication();
                 final OkHttpClient httpClient = radioDroidApp.getHttpClient();
 
-                task = new AsyncTask<Void, Void, String>() {
+                task = new BackgroundTask<String>() {
                     @Override
-                    protected String doInBackground(Void... params) {
+                    protected String doInBackground() {
                         HashMap<String, String> p = new HashMap<String, String>();
                         p.put("hidebroken", ""+(!show_broken));
                         return Utils.downloadFeedRelative(httpClient, getActivity(), relativeUrl, forceUpdate, p);

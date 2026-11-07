@@ -13,7 +13,6 @@ import android.media.AudioAttributes;
 import android.media.RingtoneManager;
 import android.net.Uri;
 import android.net.wifi.WifiManager;
-import android.os.AsyncTask;
 import android.os.Build;
 import android.os.IBinder;
 import android.os.PowerManager;
@@ -33,6 +32,7 @@ import com.devnull.radio.station.DataRadioStation;
 import com.devnull.radio.R;
 import com.devnull.radio.RadioDroidApp;
 import com.devnull.radio.Utils;
+import com.devnull.radio.utils.BackgroundTask;
 
 import okhttp3.OkHttpClient;
 
@@ -149,9 +149,9 @@ public class AlarmReceiver extends BroadcastReceiver {
         RadioDroidApp radioDroidApp = (RadioDroidApp) context.getApplicationContext();
         final OkHttpClient httpClient = radioDroidApp.getHttpClient();
 
-        new AsyncTask<Void, Void, String>() {
+        new BackgroundTask<String>() {
             @Override
-            protected String doInBackground(Void... params) {
+            protected String doInBackground() {
                 String result = null;
                 for (int i=0;i<20;i++){
                     result = Utils.getRealStationLink(httpClient, context, stationId);

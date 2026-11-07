@@ -10,7 +10,6 @@ import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.res.Resources;
-import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.text.TextUtils;
@@ -76,6 +75,7 @@ import com.rustamg.filedialogs.OpenFileDialog;
 import com.rustamg.filedialogs.SaveFileDialog;
 
 import com.devnull.radio.R;
+import com.devnull.radio.utils.BackgroundTask;
 
 import java.io.File;
 import java.util.Date;
@@ -538,9 +538,9 @@ public class ActivityMain extends AppCompatActivity implements SearchView.OnQuer
             RadioDroidApp radioDroidApp = (RadioDroidApp) getApplication();
             final OkHttpClient httpClient = radioDroidApp.getHttpClient();
 
-            new AsyncTask<Void, Void, DataRadioStation>() {
+            new BackgroundTask<DataRadioStation>() {
                 @Override
-                protected DataRadioStation doInBackground(Void... params) {
+                protected DataRadioStation doInBackground() {
                     return Utils.getStationByUuid(httpClient, context, stationUUID);
                 }
 

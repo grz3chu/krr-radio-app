@@ -1,7 +1,6 @@
 package com.devnull.radio.utils;
 
 import android.content.Context;
-import android.os.AsyncTask;
 import android.os.RemoteException;
 
 import com.devnull.radio.IPlayerService;
@@ -13,7 +12,7 @@ import java.lang.ref.WeakReference;
 
 import okhttp3.OkHttpClient;
 
-public class GetRealLinkAndPlayTask extends AsyncTask<Void, Void, String> {
+public class GetRealLinkAndPlayTask extends BackgroundTask<String> {
     private WeakReference<Context> contextRef;
     private DataRadioStation station;
     private WeakReference<IPlayerService> playerServiceRef;
@@ -30,7 +29,7 @@ public class GetRealLinkAndPlayTask extends AsyncTask<Void, Void, String> {
     }
 
     @Override
-    protected String doInBackground(Void... params) {
+    protected String doInBackground() {
         Context context = contextRef.get();
         if (context != null) {
             return Utils.getRealStationLink(httpClient, context.getApplicationContext(), station.StationUuid);

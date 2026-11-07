@@ -1,7 +1,6 @@
 package com.devnull.radio;
 
 import android.content.Intent;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -19,6 +18,7 @@ import com.devnull.radio.data.DataStatistics;
 import com.devnull.radio.interfaces.IFragmentRefreshable;
 
 import com.devnull.radio.R;
+import com.devnull.radio.utils.BackgroundTask;
 
 import okhttp3.OkHttpClient;
 
@@ -48,9 +48,9 @@ public class FragmentServerInfo extends Fragment implements IFragmentRefreshable
         RadioDroidApp radioDroidApp = (RadioDroidApp) getActivity().getApplication();
         final OkHttpClient httpClient = radioDroidApp.getHttpClient();
 
-        new AsyncTask<Void, Void, String>() {
+        new BackgroundTask<String>() {
             @Override
-            protected String doInBackground(Void... params) {
+            protected String doInBackground() {
                 return Utils.downloadFeedRelative(httpClient, getActivity(), "json/stats", forceUpdate, null);
             }
 

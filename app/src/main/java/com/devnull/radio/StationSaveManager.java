@@ -5,7 +5,6 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.media.MediaScannerConnection;
 import android.net.Uri;
-import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Environment;
 import android.preference.PreferenceManager;
@@ -18,6 +17,7 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import com.devnull.radio.station.DataRadioStation;
 
 import com.devnull.radio.R;
+import com.devnull.radio.utils.BackgroundTask;
 
 import org.json.JSONArray;
 
@@ -259,7 +259,7 @@ public class StationSaveManager extends Observable {
         final OkHttpClient httpClient = radioDroidApp.getHttpClient();
         LocalBroadcastManager.getInstance(context).sendBroadcast(new Intent(ActivityMain.ACTION_SHOW_LOADING));
 
-        new AsyncTask<Void, Void, ArrayList<DataRadioStation>>() {
+        new BackgroundTask<ArrayList<DataRadioStation>>() {
             private ArrayList<DataRadioStation> savedStations;
 
             @Override
@@ -268,7 +268,7 @@ public class StationSaveManager extends Observable {
             }
 
             @Override
-            protected ArrayList<DataRadioStation> doInBackground(Void... params) {
+            protected ArrayList<DataRadioStation> doInBackground() {
                 ArrayList<DataRadioStation> stationsToRemove = new ArrayList<>();
                 for (DataRadioStation station : savedStations) {
                     if (!station.refresh(httpClient, context) && !station.hasValidUuid() && station.RefreshRetryCount > DataRadioStation.MAX_REFRESH_RETRIES) {
@@ -340,9 +340,9 @@ public class StationSaveManager extends Observable {
         Toast toast = Toast.makeText(context, context.getResources().getString(R.string.notify_save_playlist_now, filePath, fileName), Toast.LENGTH_LONG);
         toast.show();
 
-        new AsyncTask<Void, Void, Boolean>() {
+        new BackgroundTask<Boolean>() {
             @Override
-            protected Boolean doInBackground(Void... params) {
+            protected Boolean doInBackground() {
                 return SaveM3UInternal(filePath, fileName);
             }
 
@@ -366,9 +366,9 @@ public class StationSaveManager extends Observable {
         Toast toast = Toast.makeText(context, context.getResources().getString(R.string.notify_load_playlist_now, filePath, fileName), Toast.LENGTH_LONG);
         toast.show();
 
-        new AsyncTask<Void, Void, List<DataRadioStation>>() {
+        new BackgroundTask<List<DataRadioStation>>() {
             @Override
-            protected List<DataRadioStation> doInBackground(Void... params) {
+            protected List<DataRadioStation> doInBackground() {
                 return LoadM3UInternal(filePath, fileName);
             }
 
