@@ -3,7 +3,6 @@ package com.devnull.radio.proxy;
 import android.app.Dialog;
 import android.content.DialogInterface;
 import android.content.SharedPreferences;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -21,6 +20,7 @@ import androidx.preference.PreferenceManager;
 import com.devnull.radio.R;
 import com.devnull.radio.RadioDroidApp;
 import com.devnull.radio.Utils;
+import com.devnull.radio.utils.BackgroundTask;
 
 import java.io.IOException;
 import java.lang.ref.WeakReference;
@@ -47,7 +47,7 @@ public class ProxySettingsDialog extends DialogFragment {
 
     private ArrayAdapter<Proxy.Type> proxyTypeAdapter;
 
-    private AsyncTask<Void, Void, Void> proxyTestTask;
+    private BackgroundTask<Void> proxyTestTask;
 
     @NonNull
     @Override
@@ -143,7 +143,7 @@ public class ProxySettingsDialog extends DialogFragment {
         return settings;
     }
 
-    private static class ConnectionTesterTask extends AsyncTask<Void, Void, Void> {
+    private static class ConnectionTesterTask extends BackgroundTask<Void> {
         private WeakReference<TextView> textProxyTestResult;
 
         private OkHttpClient okHttpClient;
@@ -190,7 +190,7 @@ public class ProxySettingsDialog extends DialogFragment {
         }
 
         @Override
-        protected Void doInBackground(Void... voids) {
+        protected Void doInBackground() {
             if (okHttpClient == null)
                 return null;
             try {

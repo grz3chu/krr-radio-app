@@ -1,7 +1,6 @@
 package com.devnull.radio;
 
 import android.content.Intent;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -23,6 +22,7 @@ import com.devnull.radio.station.ItemAdapterStation;
 import com.devnull.radio.station.StationsFilter;
 
 import com.devnull.radio.R;
+import com.devnull.radio.utils.BackgroundTask;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -34,7 +34,7 @@ public class FragmentHistory extends Fragment implements IAdapterRefreshable {
 
     private RecyclerView rvStations;
     private SwipeRefreshLayout swipeRefreshLayout;
-    private AsyncTask task = null;
+    private BackgroundTask<?> task = null;
 
     private HistoryManager historyManager;
 
@@ -142,9 +142,9 @@ public class FragmentHistory extends Fragment implements IAdapterRefreshable {
         }
         Log.d(TAG, "Search for items: "+listUUids.size());
 
-        task = new AsyncTask<Void, Void, List<DataRadioStation>>() {
+        task = new BackgroundTask<List<DataRadioStation>>() {
             @Override
-            protected List<DataRadioStation> doInBackground(Void... params) {
+            protected List<DataRadioStation> doInBackground() {
                 return Utils.getStationsByUuid(httpClient, getActivity(), listUUids);
             }
 

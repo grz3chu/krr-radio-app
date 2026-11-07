@@ -5,7 +5,6 @@ import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
-import android.os.AsyncTask;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.View;
@@ -28,6 +27,7 @@ import com.devnull.radio.Utils;
 import com.devnull.radio.alarm.RadioAlarmManager;
 import com.devnull.radio.alarm.TimePickerFragment;
 import com.devnull.radio.views.ItemListDialog;
+import com.devnull.radio.utils.BackgroundTask;
 
 import java.lang.ref.WeakReference;
 
@@ -77,9 +77,9 @@ public class StationActions {
 
         final WeakReference<Context> contextRef = new WeakReference<>(context);
 
-        new AsyncTask<Void, Void, String>() {
+        new BackgroundTask<String>() {
             @Override
-            protected String doInBackground(Void... params) {
+            protected String doInBackground() {
                 Context ctx = contextRef.get();
                 if (ctx == null) {
                     return null;
@@ -153,9 +153,9 @@ public class StationActions {
 
         final WeakReference<Context> contextRef = new WeakReference<>(context);
 
-        new AsyncTask<Void, Void, String>() {
+        new BackgroundTask<String>() {
             @Override
-            protected String doInBackground(Void... params) {
+            protected String doInBackground() {
                 Context ctx = contextRef.get();
                 if (ctx == null) {
                     return null;
@@ -204,9 +204,9 @@ public class StationActions {
     private static void vote(final @NonNull Context context, final @NonNull DataRadioStation station) {
         final WeakReference<Context> contextRef = new WeakReference<>(context);
 
-        new AsyncTask<Void, Void, String>() {
+        new BackgroundTask<String>() {
             @Override
-            protected String doInBackground(Void... params) {
+            protected String doInBackground() {
                 Context ctx = contextRef.get();
                 if (ctx == null) {
                     return null;
