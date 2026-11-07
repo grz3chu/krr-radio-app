@@ -16,6 +16,7 @@ import androidx.media3.datasource.TransferListener;
 import com.devnull.radio.station.live.ShoutcastInfo;
 import com.devnull.radio.station.live.StreamLiveInfo;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
@@ -29,7 +30,6 @@ import okhttp3.Response;
 import okhttp3.ResponseBody;
 
 import static com.devnull.radio.Utils.getMimeType;
-import static okhttp3.internal.Util.closeQuietly;
 
 /**
  * An {@link HttpDataSource} that uses {@link OkHttpClient},
@@ -309,5 +309,12 @@ public class IcyDataSource implements HttpDataSource {
     @Override
     public void addTransferListener(TransferListener transferListener) {
 
+    }
+
+    private static void closeQuietly(Closeable closeable) {
+        try {
+            closeable.close();
+        } catch (IOException | RuntimeException ignored) {
+        }
     }
 }
